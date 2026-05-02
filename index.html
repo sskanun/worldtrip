@@ -129,6 +129,12 @@ body{font-family:var(--font-sans);color:var(--color-text-primary)}
       </div>
     </div>
     <div class="filter-section">
+      <input 
+  id="search" 
+  placeholder="국가 또는 도시 검색"
+  style="padding:8px 12px;border-radius:8px;border:1px solid #ddd;width:100%;max-width:240px;margin-bottom:8px;"
+  oninput="handleSearch()"
+/>
       <div class="filter-row">
         <span class="filter-label">월</span>
         <div class="month-row" id="month-row"></div>
@@ -290,11 +296,17 @@ const DESTINATIONS=[
   {id:'marrakech',flag:'🇲🇦',country:'모로코',city:'마라케시',continent:'아프리카',months:[3,4,10,11],types:['문화','음식','사막'],lat:31.63,lng:-7.99,festival:'사막 & 메디나 축제',desc:'봄·가을이 모로코 최적기. 제마 엘프나 광장, 사하라 사막 1박 캠프, 쉐프샤우엔 블루 시티까지. 오감이 가득 찬 여행.',tips:['20~26°C, 쾌적한 날씨','사막 캠프는 메르주가 2박 추천','메디나 골목 미아 체험 필수','민트차·타진 꼭 먹어야 해요'],festivals:[{name:'마라케시 국제 영화제',desc:'12월, 제마 엘프나 광장 인근에서 열리는 아랍권 최대 영화제.'},{name:'로즈 축제',desc:'5월, 다데스 계곡 켈라아-므구나에서 열리는 장미 수확 축제. 장미 꽃잎 퍼레이드.'}],weather:[{m:'3월',t:20,r:25},{m:'4월',t:24,r:20},{m:'10월',t:26,r:15},{m:'11월',t:20,r:20}]},
 ];
 
-let selMonth=new Date().getMonth()+1, selContinent='전체', listMap, detailMap, listMarkers, detailMarkerLayer;
+let selMonth=new Date().getMonth()+1, selContinent='전체', keyword='', listMap, detailMap, listMarkers, detailMarkerLayer;
+
 
 function getFiltered(){
   return DESTINATIONS.filter(d=>{
-    return d.months.includes(selMonth) && (selContinent==='전체'||d.continent===selContinent);
+    return d.months.includes(selMonth)
+      && (selContinent==='전체'||d.continent===selContinent)
+      && (
+        d.country.toLowerCase().includes(keyword) ||
+        d.city.toLowerCase().includes(keyword)
+      );
   });
 }
 
@@ -366,14 +378,29 @@ function updateStats(){
 }
 
 function pickMonth(m){
-  selMonth=m; selContinent='전체';
-  buildMonthRow(); buildContRow(); renderCards(); renderListMap(); updateStats();
+  selMonth=m; 
+  selContinent='전체';
+  keyword=''; // ⭐ 추가
+  document.getElementById('search').value=''; // ⭐ 추가
+
+  buildMonthRow(); 
+  buildContRow(); 
+  renderCards(); 
+  renderListMap(); 
+  updateStats();
+
   listMap.setView([25,15],2,{animate:true});
 }
 
 function pickContinent(c){
   selContinent=c;
-  buildContRow(); renderCards(); renderListMap();
+  keyword=''; // ⭐ 추가
+  document.getElementById('search').value=''; // ⭐ 추가
+
+  buildContRow(); 
+  renderCards(); 
+  renderListMap();
+
   const views={'아시아':[20,100,3],'유럽':[52,15,3],'아메리카':[5,-70,2],'오세아니아':[-25,135,3],'아프리카':[5,22,2],'전체':[25,15,2]};
   const v=views[c]||[25,15,2];
   listMap.setView([v[0],v[1]],v[2],{animate:true});
@@ -466,6 +493,18 @@ function goList(){
   document.getElementById('list-view').classList.add('active');
   if(detailMap){detailMap.remove();detailMap=null;}
   setTimeout(()=>listMap&&listMap.invalidateSize(),100);
+}
+
+function handleSearch(){
+  keyword = document.getElementById('search').value.toLowerCase();
+  renderAll();
+}
+
+function renderAll(){
+  buildContRow();
+  renderCards();
+  renderListMap();
+  updateStats();
 }
 
 // 초기화
