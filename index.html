@@ -1,0 +1,478 @@
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);color:var(--color-text-primary)}
+
+/* ── 뷰 전환 ── */
+.view{display:none}.view.active{display:block}
+
+/* ── 리스트 뷰 ── */
+.topbar{padding:1.25rem 0 0}
+.topbar-inner{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:1rem}
+.brand{font-size:18px;font-weight:500;color:var(--color-text-primary);letter-spacing:-0.01em}
+.brand span{color:#1D9E75}
+.tagline{font-size:13px;color:var(--color-text-secondary);margin-top:2px}
+.stats-row{display:flex;gap:8px}
+.stat{background:var(--color-background-secondary);border-radius:8px;padding:6px 12px;text-align:center}
+.stat-n{font-size:15px;font-weight:500}
+.stat-l{font-size:11px;color:var(--color-text-secondary);margin-top:1px}
+.filter-section{display:flex;flex-direction:column;gap:8px;margin-bottom:1rem}
+.filter-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.filter-label{font-size:11px;font-weight:500;color:var(--color-text-secondary);min-width:28px;letter-spacing:0.04em;text-transform:uppercase}
+.month-row{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.month-row::-webkit-scrollbar{display:none}
+.mchip{flex-shrink:0;padding:5px 12px;border-radius:20px;border:0.5px solid var(--color-border-secondary);font-size:12px;cursor:pointer;background:var(--color-background-primary);color:var(--color-text-secondary);transition:all 0.12s}
+.mchip.on{background:#1D9E75;color:#fff;border-color:#1D9E75;font-weight:500}
+.chip{padding:5px 13px;border-radius:20px;border:0.5px solid var(--color-border-secondary);font-size:12px;cursor:pointer;background:var(--color-background-primary);color:var(--color-text-secondary);transition:all 0.12s;white-space:nowrap;display:inline-flex;align-items:center;gap:5px}
+.chip:hover{border-color:var(--color-border-primary);color:var(--color-text-primary)}
+.chip.on{font-weight:500}
+.chip-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.chip[data-c="전체"].on{background:#f0f0ee;border-color:#888;color:#333}
+.chip[data-c="아시아"].on{background:#E1F5EE;border-color:#1D9E75;color:#085041}
+.chip[data-c="유럽"].on{background:#EEEDFE;border-color:#534AB7;color:#26215C}
+.chip[data-c="아메리카"].on{background:#FAEEDA;border-color:#BA7517;color:#412402}
+.chip[data-c="오세아니아"].on{background:#E6F1FB;border-color:#378ADD;color:#042C53}
+.chip[data-c="아프리카"].on{background:#FAECE7;border-color:#D85A30;color:#4A1B0C}
+.map-wrap{border-radius:12px;border:0.5px solid var(--color-border-tertiary);overflow:hidden;margin-bottom:1rem}
+#list-map{width:100%;height:300px}
+.cards-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.cards-title{font-size:12px;font-weight:500;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.04em}
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-bottom:1.25rem}
+.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:12px;padding:12px 13px;cursor:pointer;transition:border-color 0.12s,transform 0.1s}
+.card:hover{border-color:var(--color-border-primary);transform:translateY(-1px)}
+.card-flag{font-size:20px;margin-bottom:4px}
+.card-country{font-size:13px;font-weight:500}
+.card-city{font-size:12px;color:var(--color-text-secondary)}
+.card-cont{font-size:11px;font-weight:500;margin-top:4px}
+.bottom-bar{display:flex;align-items:center;justify-content:space-between;padding:1rem 0 0;border-top:0.5px solid var(--color-border-tertiary);flex-wrap:wrap;gap:8px}
+.ghost-btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:8px;border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);font-size:13px;cursor:pointer;color:var(--color-text-secondary)}
+.ghost-btn:hover{background:var(--color-background-secondary)}
+
+/* ── 상세 뷰 ── */
+.detail-view{padding:0}
+.back-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 0;font-size:13px;color:var(--color-text-secondary);cursor:pointer;border:none;background:none;margin-bottom:1rem}
+.back-btn:hover{color:var(--color-text-primary)}
+.back-arrow{font-size:16px;line-height:1}
+
+/* 히어로 */
+.hero{background:var(--color-background-secondary);border-radius:12px;border:0.5px solid var(--color-border-tertiary);padding:1.5rem;margin-bottom:1rem;display:flex;gap:1.25rem;align-items:flex-start;flex-wrap:wrap}
+.hero-left{flex:1;min-width:200px}
+.hero-flag{font-size:36px;margin-bottom:8px}
+.hero-country{font-size:22px;font-weight:500;line-height:1.2}
+.hero-city{font-size:15px;color:var(--color-text-secondary);margin-top:3px;margin-bottom:12px}
+.hero-tags{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-size:11px;padding:3px 10px;border-radius:10px;font-weight:500}
+.hero-meta{display:flex;flex-direction:column;gap:8px;min-width:160px}
+.meta-item{display:flex;flex-direction:column;gap:2px}
+.meta-label{font-size:11px;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.04em;font-weight:500}
+.meta-value{font-size:13px;font-weight:500}
+
+/* 2단 레이아웃 */
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.detail-grid.full{grid-template-columns:1fr}
+
+/* 섹션 카드 */
+.section-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:12px;padding:14px 16px}
+.section-title{font-size:11px;font-weight:500;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.section-icon{width:14px;height:14px;border-radius:3px;flex-shrink:0}
+.desc-text{font-size:13px;color:var(--color-text-secondary);line-height:1.7}
+
+/* 팁 */
+.tips{display:flex;flex-direction:column;gap:8px}
+.tip-item{display:flex;gap:10px;align-items:flex-start}
+.tip-dot{width:6px;height:6px;border-radius:50%;background:#1D9E75;flex-shrink:0;margin-top:4px}
+.tip-text{font-size:13px;line-height:1.55}
+
+/* 축제 카드 */
+.festival-box{background:var(--color-background-secondary);border-radius:8px;padding:10px 12px;margin-bottom:8px}
+.festival-name{font-size:13px;font-weight:500;margin-bottom:2px}
+.festival-desc{font-size:12px;color:var(--color-text-secondary);line-height:1.55}
+
+/* 날씨 바 */
+.weather-row{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.weather-month{font-size:11px;color:var(--color-text-secondary);width:28px;flex-shrink:0}
+.weather-bar-wrap{flex:1;background:var(--color-background-secondary);border-radius:4px;height:6px;overflow:hidden}
+.weather-bar{height:100%;border-radius:4px;transition:width 0.4s}
+.weather-temp{font-size:12px;color:var(--color-text-secondary);min-width:36px;text-align:right}
+
+/* 미니맵 */
+#detail-map{width:100%;height:180px;border-radius:8px}
+
+/* 월 배지 */
+.month-badges{display:flex;gap:5px;flex-wrap:wrap}
+.mbadge{font-size:11px;padding:3px 9px;border-radius:10px;background:var(--color-background-secondary);color:var(--color-text-secondary);border:0.5px solid var(--color-border-tertiary)}
+.mbadge.best{background:#E1F5EE;color:#085041;border-color:#1D9E75;font-weight:500}
+
+/* 인근 여행지 */
+.nearby-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.nearby-card{background:var(--color-background-secondary);border-radius:8px;padding:10px 12px;cursor:pointer;border:0.5px solid var(--color-border-tertiary);transition:border-color 0.12s}
+.nearby-card:hover{border-color:var(--color-border-primary)}
+.nearby-flag{font-size:16px;margin-bottom:3px}
+.nearby-name{font-size:12px;font-weight:500}
+.nearby-cont{font-size:11px;color:var(--color-text-secondary)}
+</style>
+
+<!-- 리스트 뷰 -->
+<div id="list-view" class="view active">
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div>
+        <div class="brand">world<span>trip</span></div>
+        <div class="tagline">월별 추천 여행지 · 축제 · 자연 정보</div>
+      </div>
+      <div class="stats-row">
+        <div class="stat"><div class="stat-n" id="s-dest">—</div><div class="stat-l">여행지</div></div>
+        <div class="stat"><div class="stat-n" id="s-fest">—</div><div class="stat-l">축제</div></div>
+        <div class="stat"><div class="stat-n" id="s-cont">—</div><div class="stat-l">대륙</div></div>
+      </div>
+    </div>
+    <div class="filter-section">
+      <div class="filter-row">
+        <span class="filter-label">월</span>
+        <div class="month-row" id="month-row"></div>
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">대륙</span>
+        <div id="cont-row" style="display:flex;gap:5px;flex-wrap:wrap"></div>
+      </div>
+    </div>
+  </div>
+  <div class="map-wrap"><div id="list-map"></div></div>
+  <div class="cards-header">
+    <span class="cards-title" id="cards-title">여행지</span>
+  </div>
+  <div class="cards-grid" id="cards-grid"></div>
+  <div class="bottom-bar">
+    <div style="display:flex;gap:8px">
+      <button class="ghost-btn" onclick="sendPrompt('유저 정보 제보 기능과 AI 검증 시스템 구현 방법 알려줘 ↗')">+ 정보 제보하기 ↗</button>
+    </div>
+    <span style="font-size:11px;color:var(--color-text-tertiary)">v0.4</span>
+  </div>
+</div>
+
+<!-- 상세 뷰 -->
+<div id="detail-view" class="view">
+  <button class="back-btn" onclick="goList()">
+    <span class="back-arrow">←</span> 목록으로
+  </button>
+
+  <!-- 히어로 -->
+  <div class="hero" id="d-hero">
+    <div class="hero-left">
+      <div class="hero-flag" id="d-flag"></div>
+      <div class="hero-country" id="d-country"></div>
+      <div class="hero-city" id="d-city"></div>
+      <div class="hero-tags" id="d-tags"></div>
+    </div>
+    <div class="hero-meta">
+      <div class="meta-item">
+        <span class="meta-label">대륙</span>
+        <span class="meta-value" id="d-continent"></span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">추천 시기</span>
+        <div class="month-badges" id="d-months"></div>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">대표 축제</span>
+        <span class="meta-value" id="d-festival-short"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 설명 + 팁 -->
+  <div class="detail-grid">
+    <div class="section-card">
+      <div class="section-title">
+        <div class="section-icon" id="d-accent-1"></div>
+        여행지 소개
+      </div>
+      <div class="desc-text" id="d-desc"></div>
+    </div>
+    <div class="section-card">
+      <div class="section-title">
+        <div class="section-icon" style="background:#1D9E75"></div>
+        여행 팁
+      </div>
+      <div class="tips" id="d-tips"></div>
+    </div>
+  </div>
+
+  <!-- 축제 + 날씨 -->
+  <div class="detail-grid">
+    <div class="section-card">
+      <div class="section-title">
+        <div class="section-icon" style="background:#534AB7"></div>
+        축제 & 이벤트
+      </div>
+      <div id="d-festivals"></div>
+    </div>
+    <div class="section-card">
+      <div class="section-title">
+        <div class="section-icon" style="background:#378ADD"></div>
+        월별 기온 가이드
+      </div>
+      <div id="d-weather"></div>
+    </div>
+  </div>
+
+  <!-- 지도 -->
+  <div class="section-card detail-grid full" style="margin-bottom:12px">
+    <div class="section-title">
+      <div class="section-icon" style="background:#D85A30"></div>
+      위치
+    </div>
+    <div id="detail-map"></div>
+  </div>
+
+  <!-- 같은 대륙 여행지 -->
+  <div class="section-card detail-grid full" style="margin-bottom:1.25rem">
+    <div class="section-title">
+      <div class="section-icon" id="d-accent-2"></div>
+      같은 대륙 여행지
+    </div>
+    <div class="nearby-grid" id="d-nearby"></div>
+  </div>
+</div>
+
+<script>
+const CONTINENTS=[
+  {id:'전체',color:'#888780',dot:'#888780'},
+  {id:'아시아',color:'#1D9E75',dot:'#1D9E75'},
+  {id:'유럽',color:'#534AB7',dot:'#534AB7'},
+  {id:'아메리카',color:'#BA7517',dot:'#BA7517'},
+  {id:'오세아니아',color:'#378ADD',dot:'#378ADD'},
+  {id:'아프리카',color:'#D85A30',dot:'#D85A30'},
+];
+const CONT_ACCENT={'아시아':'#1D9E75','유럽':'#534AB7','아메리카':'#BA7517','오세아니아':'#378ADD','아프리카':'#D85A30'};
+const CONT_TAG={
+  '아시아':{bg:'#E1F5EE',c:'#085041'},
+  '유럽':{bg:'#EEEDFE',c:'#26215C'},
+  '아메리카':{bg:'#FAEEDA',c:'#412402'},
+  '오세아니아':{bg:'#E6F1FB',c:'#042C53'},
+  '아프리카':{bg:'#FAECE7',c:'#4A1B0C'},
+};
+const TYPE_TAG={
+  '자연':{bg:'#EAF3DE',c:'#27500A'},
+  '축제':{bg:'#EEEDFE',c:'#3C3489'},
+  '문화':{bg:'#E6F1FB',c:'#0C447C'},
+  '해변':{bg:'#E1F5EE',c:'#085041'},
+  '음식':{bg:'#FAEEDA',c:'#633806'},
+  '액티비티':{bg:'#FAECE7',c:'#712B13'},
+  '오로라':{bg:'#F1EFE8',c:'#444441'},
+  '백야':{bg:'#F1EFE8',c:'#444441'},
+  '사막':{bg:'#FAEEDA',c:'#633806'},
+  '단풍':{bg:'#FAECE7',c:'#712B13'},
+};
+const MONTHS_KR=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+
+const DESTINATIONS=[
+  {id:'chiangmai',flag:'🇹🇭',country:'태국',city:'치앙마이',continent:'아시아',months:[1,2,12],types:['자연','문화','음식'],lat:18.79,lng:98.98,festival:'보쌍 우산 축제 (1월)',desc:'건기의 태국 북부 최고 시즌. 올드시티 성벽, 도이수텝 사원, 매림 코끼리 보호구역까지 다양한 볼거리가 있어요. 야시장과 열대 과일도 빼놓을 수 없어요.',tips:['평균 28°C, 강수 거의 없음','보쌍 마을 우산 축제 (1월 중순)','코끼리 보호소 당일 투어 추천','나이트 바자 & 썬데이 마켓 필수'],festivals:[{name:'보쌍 우산 축제',desc:'1월 중순, 치앙마이 근교 보쌍 마을에서 열리는 전통 우산 공예 축제. 화려한 색감의 우산과 퍼레이드.'},{name:'마까부차',desc:'음력 3월 보름, 사원마다 촛불 행렬이 이어지는 불교 축제.'}],weather:[{m:'11월',t:27,r:20},{m:'12월',t:25,r:10},{m:'1월',t:28,r:5},{m:'2월',t:31,r:10},{m:'3월',t:34,r:15}]},
+
+  {id:'bali',flag:'🇮🇩',country:'인도네시아',city:'발리',continent:'아시아',months:[6,7,8,9],types:['해변','문화','자연'],lat:-8.34,lng:115.09,festival:'갈루간 힌두 축제',desc:'건기 발리는 최고의 시즌이에요. 우붓 라이스테라스, 울루와투 절벽 사원, 스미냑 해변에서 서핑까지. 힌두 문화와 자연이 공존하는 섬.',tips:['28°C, 건기라 비 없음','갈루간 축제 기간 현지 분위기 특별','우붓 아침 일찍 방문 추천','오토바이 렌탈로 이동 편리'],festivals:[{name:'갈루간',desc:'힌두 새해를 기념하는 축제. 각 마을마다 대나무 장식(펜조르)이 세워지고 사원 의식이 열려요.'},{name:'사라스와티',desc:'지식의 여신을 기리는 날. 책과 악기에 꽃을 바치고 학교·도서관에서 의식 진행.'}],weather:[{m:'5월',t:27,r:60},{m:'6월',t:26,r:40},{m:'7월',t:26,r:30},{m:'8월',t:26,r:25},{m:'9월',t:27,r:35}]},
+
+  {id:'kyoto',flag:'🇯🇵',country:'일본',city:'교토',continent:'아시아',months:[3,4,10,11],types:['문화','자연','축제'],lat:35.01,lng:135.76,festival:'벚꽃 시즌 / 단풍 시즌',desc:'3~4월 벚꽃, 10~11월 단풍. 마루야마 공원, 철학의 길, 기온 골목. 전통과 현대가 공존하는 도시로 사계절 모두 아름다워요.',tips:['봄 12~18°C, 가을 10~16°C','벚꽃·단풍 피크는 매년 다름','골든 위크(4월 말) 혼잡 주의','JR 패스로 오사카·나라 연계 추천'],festivals:[{name:'기온 마쓰리',desc:'7월 한 달 내내 열리는 교토 최대 축제. 화려한 수레 행렬 야마보코 순행은 17일.'},{name:'지다이 마쓰리',desc:'10월 22일, 헤이안 시대부터 메이지까지 각 시대 의상을 입은 2,000명의 퍼레이드.'}],weather:[{m:'3월',t:12,r:50},{m:'4월',t:17,r:55},{m:'10월',t:19,r:45},{m:'11월',t:13,r:40}]},
+
+  {id:'paris',flag:'🇫🇷',country:'프랑스',city:'파리',continent:'유럽',months:[5,6,9],types:['문화','음식','축제'],lat:48.85,lng:2.35,festival:'파리 뮤직 페스 (6월)',desc:'에펠탑, 루브르, 몽마르뜨 언덕. 5~6월과 9월이 날씨 최적기예요. 6월 21일 음악 축제 Fête de la Musique에는 온 도시가 공연장으로 변해요.',tips:['18~22°C, 맑은 날씨','뮤지엄 패스로 줄서기 단축','세느강 크루즈 일몰 시간 추천','메트로 카르네(10매 묶음) 구매'],festivals:[{name:'Fête de la Musique',desc:'6월 21일 하지, 모든 장르의 음악가들이 거리·광장에서 무료 공연. 온 도시가 축제 분위기.'},{name:'파리 국경일',desc:'7월 14일 바스티유 데이. 에펠탑 불꽃놀이와 샹젤리제 군사 퍼레이드.'}],weather:[{m:'5월',t:18,r:55},{m:'6월',t:22,r:50},{m:'9월',t:20,r:45}]},
+
+  {id:'barcelona',flag:'🇪🇸',country:'스페인',city:'바르셀로나',continent:'유럽',months:[5,6,9,10],types:['문화','해변','축제'],lat:41.39,lng:2.15,festival:'산 후안 불꽃 축제 (6월)',desc:'가우디 건축의 도시. 사그라다 파밀리아, 구엘 공원, 바르셀로네타 해변. 6월 23일 해변 불꽃 축제로 유명해요.',tips:['22~27°C, 맑음','산 후안 전야 해변 파티 경험','보케리아 시장 아침 방문 추천','사그라다 파밀리아 사전 예매 필수'],festivals:[{name:'산 후안',desc:'6월 23일 하지 전야. 바르셀로네타 해변에서 모닥불과 불꽃놀이, 음악 파티.'},{name:'라 메르세',desc:'9월 24일 바르셀로나 수호성인 축일. 인간 탑 쌓기(카스텔), 불의 퍼레이드 등.'}],weather:[{m:'5월',t:21,r:40},{m:'6월',t:25,r:30},{m:'9월',t:25,r:45},{m:'10월',t:20,r:55}]},
+
+  {id:'reykjavik',flag:'🇮🇸',country:'아이슬란드',city:'레이캬비크',continent:'유럽',months:[6,7,11,12],types:['자연','오로라','백야'],lat:64.13,lng:-21.82,festival:'백야 축제 / 오로라 시즌',desc:'여름 백야(6~7월)와 겨울 오로라(11~2월) 두 계절 모두 특별해요. 피오르드, 간헐천, 폭포, 온천을 모두 경험할 수 있어요.',tips:['여름 15°C, 겨울 -2°C','오로라는 11~2월 맑은 밤 필수','블루라군 사전 예약 필수','골든 서클 1일 투어 강추'],festivals:[{name:'레이캬비크 예술 축제',desc:'격년으로 열리는 국제 예술·음악 축제. 도시 전체가 전시장이 되는 독특한 행사.'},{name:'독립 기념일',desc:'6월 17일 아이슬란드 독립 기념. 퍼레이드와 콘서트, 백야 속 야외 행사.'}],weather:[{m:'6월',t:13,r:35},{m:'7월',t:15,r:40},{m:'11월',t:2,r:60},{m:'12월',t:-1,r:65}]},
+
+  {id:'nyc',flag:'🇺🇸',country:'미국',city:'뉴욕',continent:'아메리카',months:[5,6,9,10],types:['문화','음식','축제'],lat:40.71,lng:-74.00,festival:'메이시스 추수감사절 퍼레이드',desc:'5~6월 봄, 9~10월 가을이 뉴욕 최적기예요. 센트럴파크 봄꽃, 맨해튼 단풍, 브로드웨이 공연까지. 세계 최고의 도시 에너지.',tips:['18~24°C, 봄·가을 최적','브로드웨이 TKTS 할인 티켓','센트럴파크 무료 공연 시즌','지하철 7일 무제한 패스 추천'],festivals:[{name:'메이시스 퍼레이드',desc:'11월 추수감사절, 세계 최대 퍼레이드. 거대 풍선과 밴드, 연예인 공연.'},{name:'뉴욕 마라톤',desc:'11월 첫째 일요일. 세계 최대 마라톤 대회, 5개 보로를 달리는 장관.'}],weather:[{m:'5월',t:19,r:50},{m:'6월',t:24,r:55},{m:'9월',t:22,r:55},{m:'10월',t:16,r:50}]},
+
+  {id:'cusco',flag:'🇵🇪',country:'페루',city:'쿠스코·마추픽추',continent:'아메리카',months:[5,6,7,8,9],types:['자연','문화','액티비티'],lat:-13.53,lng:-71.97,festival:'인티 라이미 태양 축제 (6월)',desc:'건기 5~9월 최적. 마추픽추, 레인보우 마운틴, 성스러운 계곡. 6월 24일 잉카 태양 축제 인티 라이미는 쿠스코 최대 행사예요.',tips:['쾌적한 15~20°C','고산증 대비 3일 쿠스코 적응 필수','마추픽추 입장권 사전 예매','레인보우 마운틴 새벽 출발 투어'],festivals:[{name:'인티 라이미',desc:'6월 24일 잉카의 태양 신에게 바치는 제사. 사크사이와만 유적에서 수천 명이 참여하는 의식.'},{name:'코퍼스 크리스티',desc:'성체 축일, 잉카와 가톨릭 문화가 융합된 독특한 행렬. 쿠스코 메인 광장에서 진행.'}],weather:[{m:'5월',t:18,r:25},{m:'6월',t:17,r:15},{m:'7월',t:17,r:10},{m:'8월',t:18,r:15},{m:'9월',t:19,r:30}]},
+
+  {id:'queenstown',flag:'🇳🇿',country:'뉴질랜드',city:'퀸스타운',continent:'오세아니아',months:[1,2,12],types:['자연','액티비티'],lat:-45.03,lng:168.66,festival:'밀퍼드 사운드 탐험',desc:'남반구 여름. 번지점프·스카이다이빙 메카. 밀퍼드 사운드 크루즈와 와나카 호수가 압도적이에요. 피오르드랜드 국립공원 하이킹도 추천.',tips:['24°C 여름 날씨','액티비티 예약 2주 전 필수','밀퍼드 사운드 크루즈 오전 출발','렘마카블 트레일 하이킹 추천'],festivals:[{name:'퀸스타운 겨울 축제',desc:'7월(남반구 겨울) 열리는 대규모 스키·음악 축제. 불꽃놀이와 거리 공연.'},{name:'서머타임 재즈',desc:'1월 여름, 와카티푸 호수 주변 야외 재즈 페스티벌.'}],weather:[{m:'12월',t:20,r:40},{m:'1월',t:23,r:35},{m:'2월',t:22,r:40}]},
+
+  {id:'marrakech',flag:'🇲🇦',country:'모로코',city:'마라케시',continent:'아프리카',months:[3,4,10,11],types:['문화','음식','사막'],lat:31.63,lng:-7.99,festival:'사막 & 메디나 축제',desc:'봄·가을이 모로코 최적기. 제마 엘프나 광장, 사하라 사막 1박 캠프, 쉐프샤우엔 블루 시티까지. 오감이 가득 찬 여행.',tips:['20~26°C, 쾌적한 날씨','사막 캠프는 메르주가 2박 추천','메디나 골목 미아 체험 필수','민트차·타진 꼭 먹어야 해요'],festivals:[{name:'마라케시 국제 영화제',desc:'12월, 제마 엘프나 광장 인근에서 열리는 아랍권 최대 영화제.'},{name:'로즈 축제',desc:'5월, 다데스 계곡 켈라아-므구나에서 열리는 장미 수확 축제. 장미 꽃잎 퍼레이드.'}],weather:[{m:'3월',t:20,r:25},{m:'4월',t:24,r:20},{m:'10월',t:26,r:15},{m:'11월',t:20,r:20}]},
+];
+
+let selMonth=new Date().getMonth()+1, selContinent='전체', listMap, detailMap, listMarkers, detailMarkerLayer;
+
+function getFiltered(){
+  return DESTINATIONS.filter(d=>{
+    return d.months.includes(selMonth) && (selContinent==='전체'||d.continent===selContinent);
+  });
+}
+
+function makeListIcon(continent){
+  const c=CONT_ACCENT[continent]||'#888';
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="26" height="34" viewBox="0 0 26 34"><path d="M13 0C5.82 0 0 5.82 0 13c0 8.66 13 21 13 21s13-12.34 13-21C26 5.82 20.18 0 13 0z" fill="${c}" stroke="white" stroke-width="1.5"/><circle cx="13" cy="13" r="4.5" fill="white" fill-opacity="0.9"/></svg>`;
+  return L.divIcon({html:svg,className:'',iconSize:[26,34],iconAnchor:[13,34],popupAnchor:[0,-36]});
+}
+function makeDetailIcon(continent){
+  const c=CONT_ACCENT[continent]||'#888';
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="32" height="42" viewBox="0 0 32 42"><path d="M16 0C7.16 0 0 7.16 0 16c0 10.67 16 26 16 26s16-15.33 16-26C32 7.16 24.84 0 16 0z" fill="${c}" stroke="white" stroke-width="2"/><circle cx="16" cy="16" r="6" fill="white" fill-opacity="0.95"/></svg>`;
+  return L.divIcon({html:svg,className:'',iconSize:[32,42],iconAnchor:[16,42],popupAnchor:[0,-44]});
+}
+
+function initListMap(){
+  listMap=L.map('list-map',{zoomControl:true,scrollWheelZoom:false}).setView([25,15],2);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',maxZoom:18}).addTo(listMap);
+  listMarkers=L.layerGroup().addTo(listMap);
+}
+
+function renderListMap(){
+  listMarkers.clearLayers();
+  getFiltered().forEach(d=>{
+    const m=L.marker([d.lat,d.lng],{icon:makeListIcon(d.continent)});
+    m.bindPopup(`<div style="font-size:13px;font-weight:500;color:#111;margin-bottom:2px">${d.flag} ${d.country} — ${d.city}</div><div style="font-size:12px;color:#555">${d.festival}</div>`,{maxWidth:200});
+    m.on('click',()=>goDetail(d.id));
+    listMarkers.addLayer(m);
+  });
+}
+
+function buildMonthRow(){
+  const el=document.getElementById('month-row');
+  el.innerHTML=MONTHS_KR.map((m,i)=>{
+    const n=i+1, cnt=DESTINATIONS.filter(d=>d.months.includes(n)).length;
+    return `<button class="mchip${n===selMonth?' on':''}" onclick="pickMonth(${n})">${m} <span style="opacity:0.55;font-size:10px">${cnt}</span></button>`;
+  }).join('');
+}
+
+function buildContRow(){
+  const el=document.getElementById('cont-row');
+  el.innerHTML=CONTINENTS.map(c=>{
+    const cnt=c.id==='전체'
+      ?DESTINATIONS.filter(d=>d.months.includes(selMonth)).length
+      :DESTINATIONS.filter(d=>d.months.includes(selMonth)&&d.continent===c.id).length;
+    if(c.id!=='전체'&&cnt===0) return '';
+    return `<button class="chip${c.id===selContinent?' on':''}" data-c="${c.id}" onclick="pickContinent('${c.id}')"><span class="chip-dot" style="background:${c.dot}"></span>${c.id} <span style="opacity:0.5;font-size:10px">${cnt}</span></button>`;
+  }).join('');
+}
+
+function renderCards(){
+  const dests=getFiltered();
+  document.getElementById('cards-title').textContent=`${dests.length}개 여행지 · ${selMonth}월`;
+  const g=document.getElementById('cards-grid');
+  if(dests.length===0){g.innerHTML=`<div style="grid-column:1/-1;padding:2rem;text-align:center;font-size:13px;color:var(--color-text-tertiary);background:var(--color-background-secondary);border-radius:12px">해당하는 여행지가 없어요</div>`;return;}
+  g.innerHTML=dests.map(d=>`
+    <div class="card" onclick="goDetail('${d.id}')">
+      <div class="card-flag">${d.flag}</div>
+      <div class="card-country">${d.country}</div>
+      <div class="card-city">${d.city}</div>
+      <div class="card-cont" style="color:${CONT_ACCENT[d.continent]||'#888'}">${d.continent}</div>
+    </div>`).join('');
+}
+
+function updateStats(){
+  const dests=getFiltered();
+  document.getElementById('s-dest').textContent=dests.length;
+  document.getElementById('s-fest').textContent=dests.filter(d=>d.festival).length;
+  document.getElementById('s-cont').textContent=[...new Set(DESTINATIONS.filter(d=>d.months.includes(selMonth)).map(d=>d.continent))].length;
+}
+
+function pickMonth(m){
+  selMonth=m; selContinent='전체';
+  buildMonthRow(); buildContRow(); renderCards(); renderListMap(); updateStats();
+  listMap.setView([25,15],2,{animate:true});
+}
+
+function pickContinent(c){
+  selContinent=c;
+  buildContRow(); renderCards(); renderListMap();
+  const views={'아시아':[20,100,3],'유럽':[52,15,3],'아메리카':[5,-70,2],'오세아니아':[-25,135,3],'아프리카':[5,22,2],'전체':[25,15,2]};
+  const v=views[c]||[25,15,2];
+  listMap.setView([v[0],v[1]],v[2],{animate:true});
+}
+
+/* ── 상세 페이지 ── */
+function goDetail(id){
+  const d=DESTINATIONS.find(x=>x.id===id);
+  if(!d) return;
+  const accent=CONT_ACCENT[d.continent]||'#888';
+  const ct=CONT_TAG[d.continent]||{bg:'#eee',c:'#333'};
+
+  // 히어로
+  document.getElementById('d-flag').textContent=d.flag;
+  document.getElementById('d-country').textContent=d.country;
+  document.getElementById('d-city').textContent=d.city;
+  document.getElementById('d-continent').textContent=d.continent;
+  document.getElementById('d-festival-short').textContent=d.festival;
+  document.getElementById('d-accent-1').style.background=accent;
+  document.getElementById('d-accent-2').style.background=accent;
+
+  // 태그
+  document.getElementById('d-tags').innerHTML=[
+    ...d.types.map(t=>`<span class="tag" style="background:${(TYPE_TAG[t]||{bg:'#eee'}).bg};color:${(TYPE_TAG[t]||{c:'#333'}).c}">${t}</span>`),
+    `<span class="tag" style="background:${ct.bg};color:${ct.c}">${d.continent}</span>`
+  ].join('');
+
+  // 추천 월 배지
+  document.getElementById('d-months').innerHTML=MONTHS_KR.map((m,i)=>{
+    const n=i+1, isBest=d.months.includes(n);
+    return isBest?`<span class="mbadge best">${m}</span>`:'';
+  }).join('');
+
+  // 설명
+  document.getElementById('d-desc').textContent=d.desc;
+
+  // 팁
+  document.getElementById('d-tips').innerHTML=d.tips.map(t=>`
+    <div class="tip-item">
+      <div class="tip-dot"></div>
+      <span class="tip-text">${t}</span>
+    </div>`).join('');
+
+  // 축제
+  document.getElementById('d-festivals').innerHTML=(d.festivals||[]).map(f=>`
+    <div class="festival-box">
+      <div class="festival-name">${f.name}</div>
+      <div class="festival-desc">${f.desc}</div>
+    </div>`).join('');
+
+  // 날씨 바
+  const maxT=Math.max(...(d.weather||[]).map(w=>w.t));
+  document.getElementById('d-weather').innerHTML=(d.weather||[]).map(w=>{
+    const pct=Math.round((w.t/maxT)*100);
+    const col=w.t>=25?'#E8593C':w.t>=18?'#EF9F27':w.t>=10?'#378ADD':'#85B7EB';
+    return `<div class="weather-row">
+      <span class="weather-month">${w.m}</span>
+      <div class="weather-bar-wrap"><div class="weather-bar" style="width:${pct}%;background:${col}"></div></div>
+      <span class="weather-temp">${w.t}°C</span>
+    </div>`;
+  }).join('');
+
+  // 인근 여행지
+  const nearby=DESTINATIONS.filter(x=>x.continent===d.continent&&x.id!==d.id).slice(0,4);
+  document.getElementById('d-nearby').innerHTML=nearby.length
+    ?nearby.map(n=>`<div class="nearby-card" onclick="goDetail('${n.id}')"><div class="nearby-flag">${n.flag}</div><div class="nearby-name">${n.country} · ${n.city}</div><div class="nearby-cont">${n.months.map(m=>MONTHS_KR[m-1]).join(', ')}</div></div>`).join('')
+    :`<div style="font-size:13px;color:var(--color-text-tertiary)">같은 대륙 여행지가 없어요</div>`;
+
+  // 뷰 전환
+  document.getElementById('list-view').classList.remove('active');
+  document.getElementById('detail-view').classList.add('active');
+
+  // 미니맵 (매번 새로 생성)
+  setTimeout(()=>{
+    const container=document.getElementById('detail-map');
+    if(detailMap){detailMap.remove();detailMap=null;}
+    container.innerHTML='';
+    detailMap=L.map('detail-map',{zoomControl:true,scrollWheelZoom:false,dragging:false}).setView([d.lat,d.lng],6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',maxZoom:18}).addTo(detailMap);
+    L.marker([d.lat,d.lng],{icon:makeDetailIcon(d.continent)}).addTo(detailMap)
+      .bindPopup(`<b>${d.flag} ${d.city}</b>`).openPopup();
+    setTimeout(()=>detailMap.invalidateSize(),100);
+  },50);
+
+  window.scrollTo(0,0);
+}
+
+function goList(){
+  document.getElementById('detail-view').classList.remove('active');
+  document.getElementById('list-view').classList.add('active');
+  if(detailMap){detailMap.remove();detailMap=null;}
+  setTimeout(()=>listMap&&listMap.invalidateSize(),100);
+}
+
+// 초기화
+initListMap();
+buildMonthRow();
+buildContRow();
+renderCards();
+renderListMap();
+updateStats();
+</script>
